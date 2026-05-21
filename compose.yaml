@@ -5,7 +5,6 @@ services:
         volumes:
             - .:/app
             - node_modules:/app/node_modules
-        # command: npm start
         command: sleep infinity # for debugging container without starting the server
 volumes:
     node_modules:
