@@ -1,0 +1,6 @@
+.vscode/**
+.git/**
+.github/**
+node_modules/**
+Dockerfile
+compose.yaml

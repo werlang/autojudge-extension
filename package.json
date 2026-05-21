@@ -23,6 +23,10 @@
     "type": "git",
     "url": "https://github.com/werlang/autojudge-extension"
   },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "homepage": "https://autojudge.io",
   "icon": "media/icon.png",
   "main": "./src/extension.js",
@@ -61,5 +65,8 @@
         }
       }
     }
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
   }
 }
