@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { normalizeBaseUrl, pollRun, scheduleRun } from './autojudge-client.js';
+import { normalizeBaseUrl, pollRun, scheduleRun } from '../src/autojudge-client.js';
 
 describe('normalizeBaseUrl', () => {
     it('preserves an optional base path and normalizes a trailing slash', () => {

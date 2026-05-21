@@ -58,8 +58,9 @@ The extension sends the input file contents as a single test case, matching the 
 1. Start the dev container with `docker compose up -d --build`.
 2. Install or refresh dependencies inside the running service with `docker compose exec extension npm install`.
 3. Run tests inside the container with `docker compose exec extension npm test`.
-4. Open this folder as a separate VS Code workspace.
-5. Run the `AutoJudge: Run Active File` command from the Command Palette, or click the editor title button.
-6. Inspect results in the `AutoJudge` output channel.
+4. Keep automated tests in the dedicated `tests/` folder.
+5. Open this folder as a separate VS Code workspace.
+6. Run the `AutoJudge: Run Active File` command from the Command Palette, or click the editor title button.
+7. Inspect results in the `AutoJudge` output channel.
 
 All repository tooling should run through the `extension` service rather than the host machine.
