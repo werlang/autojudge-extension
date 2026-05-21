@@ -1,0 +1,51 @@
+{
+  "name": "autojudge-vscode-extension",
+  "displayName": "AutoJudge",
+  "description": "Run the active source file against an AutoJudge server from VS Code.",
+  "version": "0.0.1",
+  "publisher": "werlang",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "autojudge.runActiveFile",
+        "title": "AutoJudge: Run Active File",
+        "icon": "$(play)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "autojudge.runActiveFile",
+        "key": "ctrl+alt+r",
+        "mac": "ctrl+alt+r",
+        "when": "resourceScheme == file && editorLangId =~ /^(python|javascript|typescript|java|cpp|c|php)$/"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "autojudge.runActiveFile",
+          "when": "resourceScheme == file && editorLangId =~ /^(python|javascript|typescript|java|cpp|c|php)$/",
+          "group": "navigation@100"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AutoJudge",
+      "properties": {
+        "autojudge.baseUrl": {
+          "type": "string",
+          "default": "https://api.autojudge.io",
+          "description": "Full AutoJudge API base URL. Defaults to https://api.autojudge.io. Set this to your custom AutoJudge server URL if you're self-hosting."
+        }
+      }
+    }
+  }
+}
