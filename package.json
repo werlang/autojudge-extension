@@ -1,5 +1,5 @@
 {
-  "name": "autojudge-vscode-extension",
+  "name": "autojudge-extension",
   "displayName": "AutoJudge",
   "description": "Run the active source file against an AutoJudge server from VS Code.",
   "version": "0.0.1",
@@ -9,8 +9,22 @@
     "vscode": "^1.90.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
   ],
+  "keywords": [
+    "autojudge",
+    "judge",
+    "competitive programming",
+    "education",
+    "testing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/werlang/autojudge-extension"
+  },
+  "homepage": "https://autojudge.io",
+  "icon": "media/icon.png",
   "main": "./src/extension.js",
   "contributes": {
     "commands": [
