@@ -2,8 +2,7 @@ import path from 'path';
 import * as vscode from 'vscode';
 import { normalizeBaseUrl, scheduleRun, pollRun } from './autojudge-client.js';
 import { readInputSidecar } from './input-resolver.js';
-
-const SUPPORTED_EXTENSIONS = new Set(['.c', '.cpp', '.java', '.js', '.php', '.py']);
+import { SUPPORTED_EXTENSIONS } from './config.js';
 
 /**
  * Run the active source file through the AutoJudge coderunner endpoint.
@@ -24,7 +23,7 @@ export async function runActiveFile(outputChannel) {
     }
 
     const extension = path.extname(document.fileName).toLowerCase();
-    if (!SUPPORTED_EXTENSIONS.has(extension)) {
+    if (!SUPPORTED_EXTENSIONS.includes(extension)) {
         void vscode.window.showErrorMessage(`Unsupported AutoJudge file extension: ${extension || '(none)'}.`);
         return;
     }

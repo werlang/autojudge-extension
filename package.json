@@ -31,6 +31,7 @@
   "homepage": "https://autojudge.io",
   "icon": "media/icon.png",
   "main": "./src/extension.js",
+  "type": "module",
   "contributes": {
     "commands": [
       {
