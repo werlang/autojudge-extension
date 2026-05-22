@@ -1,10 +1,9 @@
 # Changelog
 
-## 0.1 (2026-05-21) - Unreleased
+## 0.1.0 (2026-05-21) - Unreleased
 
-- Added `autojudge.inputPath` so runs can use a configured file or folder path.
-- Added fallback input resolution from sibling file to sibling folder to empty input.
-- Improved run output so multi-case folder inputs render a concise summary in the `AutoJudge` output channel.
+- Added support for testcase files with .in and .out extensions, enabling judge mode when matching pairs are present, or falling back to code-runner mode when only .in files are found.
+- Added support for configurable testcase folders with `autojudge.testcasePath`, allowing users to specify a folder for input and expected output file.
 
 ## 0.0.1 (2026-05-21) - Initial testing release
 

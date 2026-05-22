@@ -43,12 +43,32 @@ async function readJson(response) {
 
 /**
  * Queue a coderunner task using the same API contract as the AutoJudge web editor.
- * @param {{ baseUrl: string, filename: string, code: string, inputs: string[], signal?: AbortSignal }} options
+ * @param {{ baseUrl: string, filename: string, code: string, inputs: string[], outputs?: string[] | null, signal?: AbortSignal }} options
  * @returns {Promise<{ id: string, expireAt: number, message: string }>}
  */
-export async function scheduleRun({ baseUrl, filename, code, inputs, signal }) {
+export async function scheduleRun({ baseUrl, filename, code, inputs, outputs, signal }) {
     if (!Array.isArray(inputs) || !inputs.length) {
         throw new Error('AutoJudge run inputs must be provided as a non-empty array.');
+    }
+
+    if (outputs != null) {
+        if (!Array.isArray(outputs) || !outputs.length) {
+            throw new Error('AutoJudge expected outputs must be provided as a non-empty array when configured.');
+        }
+
+        if (outputs.length !== inputs.length) {
+            throw new Error('AutoJudge expected outputs must match the input case count.');
+        }
+    }
+
+    const payload = {
+        filename,
+        code,
+        input: JSON.stringify(inputs),
+    };
+
+    if (outputs != null) {
+        payload.output = JSON.stringify(outputs);
     }
 
     const response = await fetch(buildEndpointUrl(baseUrl, 'judge'), {
@@ -56,11 +76,7 @@ export async function scheduleRun({ baseUrl, filename, code, inputs, signal }) {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            filename,
-            code,
-            input: JSON.stringify(inputs),
-        }),
+        body: JSON.stringify(payload),
         signal,
     });
 

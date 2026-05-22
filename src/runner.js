@@ -2,8 +2,9 @@ import path from 'path';
 import * as vscode from 'vscode';
 import { normalizeBaseUrl, scheduleRun, pollRun } from './autojudge-client.js';
 import { resolveRunInputs } from './input-resolver.js';
+import { resolveExpectedOutputs } from './output-path-resolver.js';
 import { SUPPORTED_EXTENSIONS } from './config.js';
-import { writePreSendOutput, writeResult, writeWaitingForResultOutput } from './output-resolver.js';
+import { buildResultNotification, writePreSendOutput, writeResult, writeWaitingForResultOutput } from './output-resolver.js';
 
 /**
  * Run the active source file through the AutoJudge coderunner endpoint.
@@ -30,6 +31,7 @@ export async function runActiveFile(outputChannel) {
     }
 
     const config = vscode.workspace.getConfiguration('autojudge');
+    const configuredTestcasePath = config.get('testcasePath', '');
     let baseUrl;
     try {
         baseUrl = normalizeBaseUrl(config.get('baseUrl', 'https://api.autojudge.io'));
@@ -57,13 +59,20 @@ export async function runActiveFile(outputChannel) {
         try {
             progress.report({ message: 'Resolving run inputs' });
             const resolvedInputs = await resolveRunInputs(vscode, document.uri, {
-                configuredInputPath: config.get('inputPath', ''),
+                configuredTestcasePath,
+            });
+
+            // Judge mode activates automatically only when every discovered `.in` file has a matching `.out` file.
+            const resolvedOutputs = await resolveExpectedOutputs(vscode, document.uri, {
+                configuredTestcasePath,
+                resolvedInputs,
             });
 
             writePreSendOutput(outputChannel, {
                 filename,
                 baseUrl,
                 resolvedInputs,
+                resolvedOutputs,
             });
 
             progress.report({ message: 'Queueing run' });
@@ -72,6 +81,7 @@ export async function runActiveFile(outputChannel) {
                 filename,
                 code: encodedSource,
                 inputs: resolvedInputs.inputs,
+                outputs: resolvedOutputs?.outputs,
                 signal: abortController.signal,
             });
 
@@ -94,6 +104,16 @@ export async function runActiveFile(outputChannel) {
             }
 
             writeResult(outputChannel, { result });
+
+            const notification = buildResultNotification(result, {
+                hasExpectedOutputs: Boolean(resolvedOutputs),
+            });
+            if (notification.severity === 'error') {
+                void vscode.window.showErrorMessage(notification.message);
+            }
+            else {
+                void vscode.window.showInformationMessage(notification.message);
+            }
         }
         catch (error) {
             const message = error.name === 'AbortError' ? 'Run cancelled.' : error.message;
