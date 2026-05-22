@@ -9,12 +9,13 @@ Use this skill when a task changes how the extension runs code, talks to the Aut
 
 ## Runtime Contract
 
-- Keep activation thin in `src/extension.js`; put API details in `src/autojudge-client.js` and sidecar-file logic in `src/input-resolver.js`.
+- Keep activation thin in `src/extension.js`; put API details in `src/autojudge-client.js` and input-resolution logic in `src/input-resolver.js`.
 - Preserve the command id `autojudge.runActiveFile` unless the task explicitly requires a breaking manifest change.
-- Preserve the sidecar input convention: `solution.py` reads from a sibling file named `solution` with no extension.
+- Preserve the default fallback order when `autojudge.inputPath` is blank: sibling file without the source extension, then sibling folder, then a single empty-string input.
+- Preserve the configured input-path behavior: a non-empty `autojudge.inputPath` may resolve to a file or folder, can use VS Code variables, and should fail clearly when it resolves to nothing.
 - Preserve the current run flow unless the task explicitly changes it: queue with `POST /judge`, then poll with `GET /judge/{id}`.
 - Reuse `normalizeBaseUrl()` from `src/autojudge-client.js` for API URLs instead of rebuilding base-path logic elsewhere.
-- Do not casually change the request payload shape; the backend currently expects `input: JSON.stringify([input])`.
+- Do not casually change the request payload shape; the backend currently expects `input: JSON.stringify(inputs)` where `inputs` is an ordered array of case strings.
 - Keep output concise in the `AutoJudge` output channel and VS Code notifications.
 
 ## Implementation Workflow
@@ -22,7 +23,7 @@ Use this skill when a task changes how the extension runs code, talks to the Aut
 1. Identify which file owns the behavior change before editing:
    - `src/extension.js` for command flow, progress UI, and output formatting.
    - `src/autojudge-client.js` for HTTP contract, polling, normalization, and transport errors.
-   - `src/input-resolver.js` for sidecar file lookup and read behavior.
+   - `src/input-resolver.js` for configured input paths, sibling file or folder fallback, and empty-input behavior.
 2. Make the smallest edit that fixes the root cause or adds the requested behavior.
 3. If the user-facing contract changed, update docs or manifest files that describe that behavior.
 4. Validate with the narrowest honest check available. This repo usually requires manual validation; use [references/manual-validation.md](references/manual-validation.md).
@@ -32,4 +33,5 @@ Use this skill when a task changes how the extension runs code, talks to the Aut
 - Prefer a narrow executable check if one exists for the touched slice.
 - When automation is absent, run a manual smoke test in the VS Code Extension Development Host.
 - Verify both success output and failure or cancellation behavior when the task touches run flow or messaging.
+- When input resolution changes, verify configured file paths, configured folder paths, fallback ordering, and missing configured targets.
 - State any remaining validation gaps explicitly.
