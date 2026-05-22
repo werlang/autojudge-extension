@@ -1,8 +1,9 @@
 import path from 'path';
 import * as vscode from 'vscode';
 import { normalizeBaseUrl, scheduleRun, pollRun } from './autojudge-client.js';
-import { readInputSidecar } from './input-resolver.js';
+import { resolveRunInputs } from './input-resolver.js';
 import { SUPPORTED_EXTENSIONS } from './config.js';
+import { writePreSendOutput, writeResult, writeWaitingForResultOutput } from './output-resolver.js';
 
 /**
  * Run the active source file through the AutoJudge coderunner endpoint.
@@ -54,26 +55,27 @@ export async function runActiveFile(outputChannel) {
         const cancellationSubscription = cancellationToken.onCancellationRequested(() => abortController.abort());
 
         try {
-            progress.report({ message: 'Resolving input sidecar file' });
-            const { inputUri, input } = await readInputSidecar(vscode, document.uri);
+            progress.report({ message: 'Resolving run inputs' });
+            const resolvedInputs = await resolveRunInputs(vscode, document.uri, {
+                configuredInputPath: config.get('inputPath', ''),
+            });
 
-            outputChannel.appendLine(`Running ${filename}`);
-            outputChannel.appendLine(`Server: ${baseUrl}`);
-            outputChannel.appendLine(`Input: ${inputUri.fsPath}`);
-            outputChannel.appendLine('');
+            writePreSendOutput(outputChannel, {
+                filename,
+                baseUrl,
+                resolvedInputs,
+            });
 
             progress.report({ message: 'Queueing run' });
             const queuedRun = await scheduleRun({
                 baseUrl,
                 filename,
                 code: encodedSource,
-                input,
+                inputs: resolvedInputs.inputs,
                 signal: abortController.signal,
             });
 
-            outputChannel.appendLine(`Task queued: ${queuedRun.id}`);
-            outputChannel.appendLine('Waiting for AutoJudge result...');
-            outputChannel.appendLine('');
+            writeWaitingForResultOutput(outputChannel, { queueResult: queuedRun });
 
             progress.report({ message: 'Waiting for result' });
             const result = await pollRun({
@@ -82,7 +84,16 @@ export async function runActiveFile(outputChannel) {
                 signal: abortController.signal,
             });
 
-            writeResult(outputChannel, result);
+            // replace result input file name by the original source file name for better output readability
+            if (result?.results?.length) {
+                for (const [index, entry] of result.results.entries()) {
+                    if (entry.file) {
+                        entry.file = path.basename(resolvedInputs.inputUris[index]?.fsPath || entry.file);
+                    }
+                }
+            }
+
+            writeResult(outputChannel, { result });
         }
         catch (error) {
             const message = error.name === 'AbortError' ? 'Run cancelled.' : error.message;
@@ -102,27 +113,3 @@ export async function runActiveFile(outputChannel) {
     });
 }
 
-/**
- * Render the queued AutoJudge result using the same single-run semantics as the web editor.
- * @param {import('vscode').OutputChannel} outputChannel
- * @param {any} result
- */
-function writeResult(outputChannel, result) {
-    if (!result?.results?.length) {
-        outputChannel.appendLine('ERROR:');
-        outputChannel.appendLine(result?.message || 'AutoJudge did not return any run results.');
-        return;
-    }
-
-    const firstResult = result.results[0];
-    if (result.passed === 1) {
-        outputChannel.appendLine('OUTPUT:');
-        outputChannel.appendLine(firstResult.output || '');
-        outputChannel.appendLine('');
-        outputChannel.appendLine(`Execution time: ${firstResult.time} ms`);
-        return;
-    }
-
-    outputChannel.appendLine('ERROR:');
-    outputChannel.appendLine(firstResult.message || result.message || 'AutoJudge run failed.');
-}

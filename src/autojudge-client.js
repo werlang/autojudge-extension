@@ -43,10 +43,14 @@ async function readJson(response) {
 
 /**
  * Queue a coderunner task using the same API contract as the AutoJudge web editor.
- * @param {{ baseUrl: string, filename: string, code: string, input: string, signal?: AbortSignal }} options
+ * @param {{ baseUrl: string, filename: string, code: string, inputs: string[], signal?: AbortSignal }} options
  * @returns {Promise<{ id: string, expireAt: number, message: string }>}
  */
-export async function scheduleRun({ baseUrl, filename, code, input, signal }) {
+export async function scheduleRun({ baseUrl, filename, code, inputs, signal }) {
+    if (!Array.isArray(inputs) || !inputs.length) {
+        throw new Error('AutoJudge run inputs must be provided as a non-empty array.');
+    }
+
     const response = await fetch(buildEndpointUrl(baseUrl, 'judge'), {
         method: 'POST',
         headers: {
@@ -55,7 +59,7 @@ export async function scheduleRun({ baseUrl, filename, code, input, signal }) {
         body: JSON.stringify({
             filename,
             code,
-            input: JSON.stringify([input]),
+            input: JSON.stringify(inputs),
         }),
         signal,
     });

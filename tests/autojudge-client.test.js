@@ -30,7 +30,7 @@ describe('scheduleRun', () => {
             baseUrl: 'https://example.com/api',
             filename: 'solution.py',
             code: 'print(1)',
-            input: '42',
+            inputs: ['42', '99'],
         })).resolves.toEqual({ id: 'run-123', expireAt: 123, message: 'queued' });
 
         expect(fetchMock).toHaveBeenCalledWith('https://example.com/api/judge', {
@@ -41,7 +41,7 @@ describe('scheduleRun', () => {
             body: JSON.stringify({
                 filename: 'solution.py',
                 code: 'print(1)',
-                input: JSON.stringify(['42']),
+                input: JSON.stringify(['42', '99']),
             }),
             signal: undefined,
         });

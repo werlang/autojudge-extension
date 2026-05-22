@@ -1,9 +1,9 @@
 {
   "name": "autojudge-extension",
   "displayName": "AutoJudge",
-  "description": "Run the active source file against an AutoJudge server from VS Code.",
-  "version": "0.0.1",
-  "publisher": "werlang",
+  "description": "Run and submit programming solutions to the AutoJudge API directly from Visual Studio Code, or connect to your own self-hosted AutoJudge server instance.",
+  "version": "0.1",
+  "publisher": "autojudge",
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
@@ -64,6 +64,12 @@
           "type": "string",
           "default": "https://api.autojudge.io",
           "description": "Full AutoJudge API base URL. Defaults to https://api.autojudge.io. Set this to your custom AutoJudge server URL if you're self-hosting."
+        },
+        "autojudge.inputPath": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Optional input path for the active run. Accepts a file or folder path and supports VS Code variables such as ${workspaceFolder} and ${fileDirname}. If blank, AutoJudge looks for a sibling file without the source extension, then a sibling folder, then sends an empty input string."
         }
       }
     }
