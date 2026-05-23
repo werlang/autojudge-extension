@@ -2,8 +2,9 @@
 
 ## 0.1.0 (2026-05-21) - Unreleased
 
-- Added support for testcase files with .in and .out extensions, enabling judge mode when matching pairs are present, or falling back to code-runner mode when only .in files are found.
-- Added support for configurable testcase folders with `autojudge.testcasePath`, allowing users to specify a folder for input and expected output file.
+- Split the run flow into explicit coderunner and test-mode commands so users can choose between quick output checks and strict testcase validation.
+- Added strict test-mode validation that stops the run when any `.in` file is missing its matching `.out` file.
+- Added support for configurable testcase folders with `autojudge.testcasePath`, allowing users to specify one folder for input and expected output files.
 
 ## 0.0.1 (2026-05-21) - Initial testing release
 
