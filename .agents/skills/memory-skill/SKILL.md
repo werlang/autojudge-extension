@@ -1,5 +1,5 @@
 ---
-name: memory
+name: memory-skill
 description: Human-like long-term memory across sessions. Start every task with memory_search unless the user opts out, search again whenever context is missing, write at least one durable memory per substantive task with memory_write, and use memory_forget to prune stale, duplicate, contradicted, or low-value entries so active memory stays small and relevant.
 ---
 
