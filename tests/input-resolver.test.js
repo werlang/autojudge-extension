@@ -85,32 +85,41 @@ function createWorkspaceMock(entries, workspaceFolder = '/workspace') {
 }
 
 describe('resolveRunInputs', () => {
-    it('reads a configured input file after expanding VS Code variables', async () => {
+    it('reads a configured testcase folder after expanding VS Code variables', async () => {
         const vscode = createWorkspaceMock({
-            '/workspace/fixtures/custom/input.txt': '42\n',
+            '/workspace/fixtures/custom': [
+                ['case-02.in', 1],
+                ['notes.txt', 1],
+                ['case-01.in', 1],
+            ],
+            '/workspace/fixtures/custom/case-01.in': '42\n',
+            '/workspace/fixtures/custom/case-02.in': '43\n',
+            '/workspace/fixtures/custom/notes.txt': 'ignore me',
         });
 
         await expect(resolveRunInputs(vscode, createUri('/workspace/solutions/main.py'), {
-            configuredInputPath: '${workspaceFolder}/fixtures/custom/input.txt',
+            configuredTestcasePath: '${workspaceFolder}/fixtures/custom',
         })).resolves.toMatchObject({
-            sourceType: 'configured-file',
-            inputs: ['42\n'],
-            sourceLabel: '/workspace/fixtures/custom/input.txt',
+            sourceType: 'configured-folder',
+            inputs: ['42\n', '43\n'],
+            sourceLabel: '/workspace/fixtures/custom',
         });
     });
 
-    it('reads configured folders as alphabetical multi-case inputs', async () => {
+    it('reads configured testcase folders as alphabetical multi-case inputs', async () => {
         const vscode = createWorkspaceMock({
             '/workspace/fixtures/cases': [
-                ['case-02.txt', 1],
-                ['case-01.txt', 1],
+                ['case-02.in', 1],
+                ['case-01.in', 1],
+                ['notes.md', 1],
             ],
-            '/workspace/fixtures/cases/case-01.txt': 'first',
-            '/workspace/fixtures/cases/case-02.txt': 'second',
+            '/workspace/fixtures/cases/case-01.in': 'first',
+            '/workspace/fixtures/cases/case-02.in': 'second',
+            '/workspace/fixtures/cases/notes.md': 'ignore me',
         });
 
         await expect(resolveRunInputs(vscode, createUri('/workspace/solutions/main.py'), {
-            configuredInputPath: '${workspaceFolder}/fixtures/cases',
+            configuredTestcasePath: '${workspaceFolder}/fixtures/cases',
         })).resolves.toMatchObject({
             sourceType: 'configured-folder',
             inputs: ['first', 'second'],
@@ -118,44 +127,39 @@ describe('resolveRunInputs', () => {
         });
     });
 
-    it('falls back to a sibling sidecar file when no setting is configured', async () => {
+    it('defaults to the source file directory when no testcase path is configured', async () => {
         const vscode = createWorkspaceMock({
-            '/workspace/solutions/main': '7 9\n',
-        });
-
-        await expect(resolveRunInputs(vscode, createUri('/workspace/solutions/main.py'), {
-            configuredInputPath: '',
-        })).resolves.toMatchObject({
-            sourceType: 'default-file',
-            inputs: ['7 9\n'],
-            sourceLabel: '/workspace/solutions/main',
-        });
-    });
-
-    it('falls back to a sibling sidecar folder when the default file is missing', async () => {
-        const vscode = createWorkspaceMock({
-            '/workspace/solutions/main': [
+            '/workspace/solutions': [
+                ['main.py', 1],
                 ['02.in', 1],
+                ['readme.txt', 1],
                 ['01.in', 1],
             ],
-            '/workspace/solutions/main/01.in': 'alpha',
-            '/workspace/solutions/main/02.in': 'beta',
+            '/workspace/solutions/01.in': '7 9\n',
+            '/workspace/solutions/02.in': '1 2\n',
+            '/workspace/solutions/readme.txt': 'ignore me',
         });
 
         await expect(resolveRunInputs(vscode, createUri('/workspace/solutions/main.py'), {
-            configuredInputPath: undefined,
+            configuredTestcasePath: '',
         })).resolves.toMatchObject({
             sourceType: 'default-folder',
-            inputs: ['alpha', 'beta'],
-            sourceLabel: '/workspace/solutions/main',
+            inputs: ['7 9\n', '1 2\n'],
+            sourceLabel: '/workspace/solutions',
         });
     });
 
-    it('returns a single empty input when no configured or default target exists', async () => {
-        const vscode = createWorkspaceMock({});
+    it('runs once with empty input when the testcase folder has no .in files', async () => {
+        const vscode = createWorkspaceMock({
+            '/workspace/solutions': [
+                ['main.py', 1],
+                ['notes.txt', 1],
+            ],
+            '/workspace/solutions/notes.txt': 'ignore me',
+        });
 
         await expect(resolveRunInputs(vscode, createUri('/workspace/solutions/main.py'), {
-            configuredInputPath: '   ',
+            configuredTestcasePath: undefined,
         })).resolves.toMatchObject({
             sourceType: 'empty',
             inputs: [''],
@@ -163,11 +167,33 @@ describe('resolveRunInputs', () => {
         });
     });
 
-    it('fails when a configured path resolves to nothing', async () => {
+    it('returns a single empty input when the default testcase folder does not exist', async () => {
         const vscode = createWorkspaceMock({});
 
         await expect(resolveRunInputs(vscode, createUri('/workspace/solutions/main.py'), {
-            configuredInputPath: '${fileDirname}/missing.txt',
-        })).rejects.toThrow('Configured input path not found: /workspace/solutions/missing.txt');
+            configuredTestcasePath: '   ',
+        })).resolves.toMatchObject({
+            sourceType: 'empty',
+            inputs: [''],
+            sourceLabel: 'empty input',
+        });
+    });
+
+    it('fails when a configured testcase folder resolves to nothing', async () => {
+        const vscode = createWorkspaceMock({});
+
+        await expect(resolveRunInputs(vscode, createUri('/workspace/solutions/main.py'), {
+            configuredTestcasePath: '${fileDirname}/missing-cases',
+        })).rejects.toThrow('Configured testcase path not found: /workspace/solutions/missing-cases');
+    });
+
+    it('fails when a configured testcase path resolves to a file instead of a folder', async () => {
+        const vscode = createWorkspaceMock({
+            '/workspace/solutions/cases.in': '42\n',
+        });
+
+        await expect(resolveRunInputs(vscode, createUri('/workspace/solutions/main.py'), {
+            configuredTestcasePath: '${fileDirname}/cases.in',
+        })).rejects.toThrow('Configured testcase path must be a folder: /workspace/solutions/cases.in');
     });
 });

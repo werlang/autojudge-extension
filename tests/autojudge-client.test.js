@@ -46,6 +46,37 @@ describe('scheduleRun', () => {
             signal: undefined,
         });
     });
+
+    it('includes expected outputs when test mode is configured', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ id: 'run-123', expireAt: 123, message: 'queued' }),
+        });
+
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(scheduleRun({
+            baseUrl: 'https://example.com/api',
+            filename: 'solution.py',
+            code: 'print(1)',
+            inputs: ['42'],
+            outputs: ['43'],
+        })).resolves.toEqual({ id: 'run-123', expireAt: 123, message: 'queued' });
+
+        expect(fetchMock).toHaveBeenCalledWith('https://example.com/api/judge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: 'solution.py',
+                code: 'print(1)',
+                input: JSON.stringify(['42']),
+                output: JSON.stringify(['43']),
+            }),
+            signal: undefined,
+        });
+    });
 });
 
 describe('pollRun', () => {
