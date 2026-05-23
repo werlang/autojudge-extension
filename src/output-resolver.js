@@ -1,26 +1,35 @@
 import path from 'path';
+import { RUN_MODE } from './config.js';
 
 /**
  * Render the details of an AutoJudge run result in the output channel before the run is sent, after it is queued, and when results are received.
  * @param {import('vscode').OutputChannel} outputChannel 
- * @param {{ filename: string, baseUrl: string, resolvedInputs: { sourceLabel: string, inputs: string[] }, resolvedOutputs?: { sourceLabel: string } | null }} param1 
+ * @param {{ filename: string, baseUrl: string, mode?: typeof RUN_MODE[keyof typeof RUN_MODE], resolvedInputs: { sourceLabel: string, inputs: string[] }, resolvedOutputs?: { sourceLabel: string } | null }} param1 
  */
-export function writePreSendOutput(outputChannel, { filename, baseUrl, resolvedInputs, resolvedOutputs }) {
+export function writePreSendOutput(outputChannel, { filename, baseUrl, mode = RUN_MODE.CODE_RUNNER, resolvedInputs, resolvedOutputs }) {
     outputChannel.appendLine(`Running ${filename}`);
     outputChannel.appendLine(`Server: ${baseUrl}`);
+    outputChannel.appendLine(`Mode: ${mode}`);
     outputChannel.appendLine(`Input source: ${resolvedInputs.sourceLabel}`);
     outputChannel.appendLine(`Input cases: ${resolvedInputs.inputs.length}`);
-    outputChannel.appendLine(`Expected output: ${getExpectedOutputLabel(resolvedInputs, resolvedOutputs)}`);
+    if (mode === RUN_MODE.TEST) {
+        outputChannel.appendLine(`Expected output: ${getExpectedOutputLabel(mode, resolvedInputs, resolvedOutputs)}`);
+    }
     outputChannel.appendLine('');
 }
 
 /**
- * Explain whether judge mode is active for the resolved testcase folder.
+ * Explain how the explicit run mode will use expected outputs.
+ * @param {typeof RUN_MODE[keyof typeof RUN_MODE]} mode
  * @param {{ sourceType: string }} resolvedInputs
  * @param {{ sourceLabel: string } | null | undefined} resolvedOutputs
  * @returns {string}
  */
-function getExpectedOutputLabel(resolvedInputs, resolvedOutputs) {
+function getExpectedOutputLabel(mode, resolvedInputs, resolvedOutputs) {
+    if (mode === RUN_MODE.CODE_RUNNER) {
+        return 'not used in coderunner mode';
+    }
+
     if (resolvedOutputs?.sourceLabel) {
         return resolvedOutputs.sourceLabel;
     }
@@ -29,7 +38,7 @@ function getExpectedOutputLabel(resolvedInputs, resolvedOutputs) {
         return 'not available (no .in files found)';
     }
 
-    return 'auto-detect skipped (missing matching .out files)';
+    return 'required in test mode';
 }
 
 /**
@@ -49,15 +58,10 @@ export function writeWaitingForResultOutput(outputChannel, { queueResult }) {
  * @param {import('vscode').OutputChannel} outputChannel
  * @param {any} result
  */
-export function writeResult(outputChannel, { result }) {
+export function writeResult(outputChannel, { result, mode = RUN_MODE.CODE_RUNNER }) {
     if (!result?.results?.length) {
         outputChannel.appendLine('ERROR:');
         outputChannel.appendLine(result?.message || 'AutoJudge did not return any run results.');
-        return;
-    }
-
-    if (result.results.length === 1) {
-        writeSingleResult(outputChannel, result, result.results[0]);
         return;
     }
 
@@ -68,42 +72,22 @@ export function writeResult(outputChannel, { result }) {
         ? result.failed
         : Math.max(result.results.length - passedCount, 0);
 
-    outputChannel.appendLine(failedCount === 0 ? 'OUTPUT:' : 'ERROR:');
-    outputChannel.appendLine(`Cases: ${passedCount} passed, ${failedCount} failed, ${result.results.length} total`);
+    outputChannel.appendLine(mode === RUN_MODE.CODE_RUNNER ? 'OUTPUT:' : 'RESULTS:');
     outputChannel.appendLine('');
 
     for (const [index, entry] of result.results.entries()) {
+        console.log(entry);
         const label = entry.file ? path.basename(entry.file) : `Case ${index + 1}`;
-        const status = entry.expected ? entry.status || inferEntryStatus(result, entry) : null;
 
-        outputChannel.appendLine(`[${label}] ${status ? `- ${status}` : 'OUTPUT'}:`);
+        outputChannel.appendLine(`[${label}]${mode === RUN_MODE.CODE_RUNNER ? ':' : ` - ${getVerdictLabel(entry.status)}`}`);
         writeEntryDetails(outputChannel, entry);
         outputChannel.appendLine('');
     }
-}
 
-/**
- * Render a single-case AutoJudge result while preserving the existing success/error headings.
- * @param {import('vscode').OutputChannel} outputChannel
- * @param {any} result
- * @param {any} entry
- */
-function writeSingleResult(outputChannel, result, entry) {
-    if (result.passed === 1 || entry.status === 'PASS') {
-        outputChannel.appendLine('OUTPUT:');
-        outputChannel.appendLine(entry.output || '');
-        if (typeof entry.time === 'number') {
-            outputChannel.appendLine('');
-            outputChannel.appendLine(`Execution time: ${entry.time} ms`);
-        }
-        return;
+    if (mode === RUN_MODE.TEST) {
+        outputChannel.appendLine(`Cases: ${passedCount} passed, ${failedCount} failed, ${result.results.length} total`);
     }
 
-    outputChannel.appendLine('ERROR:');
-    writeEntryDetails(outputChannel, entry);
-    if (!entry.output && !entry.message && !entry.expected && !entry.received) {
-        outputChannel.appendLine(result.message || 'AutoJudge run failed.');
-    }
 }
 
 /**
@@ -131,59 +115,18 @@ function writeEntryDetails(outputChannel, entry) {
 }
 
 /**
- * Infer a readable status when the backend omits one for coderunner responses.
+ * Derive a stable verdict label for notifications even when the backend omits the top-level status.
  * @param {any} result
- * @param {any} entry
  * @returns {string}
  */
-function inferEntryStatus(result, entry) {
-    if (entry.message || result.failed > 0) {
-        return 'ERROR';
+function getVerdictLabel(result) {
+    const statusEnum = {
+        PASS: 'PASS',
+        WA: 'WRONG_ANSWER',
+        TLE: 'TIME_LIMIT_EXCEEDED',
+        RTE: 'ERROR',
     }
-
-    return 'PASS';
-}
-
-/**
- * Build the notification text that accompanies the output-channel details.
- * @param {any} result
- * @param {{ hasExpectedOutputs: boolean }} options
- * @returns {{ severity: 'information' | 'error', message: string }}
- */
-export function buildResultNotification(result, { hasExpectedOutputs }) {
-    if (!result?.results?.length) {
-        return {
-            severity: 'error',
-            message: result?.message || 'AutoJudge did not return any run results.',
-        };
-    }
-
-    const passedCount = typeof result.passed === 'number'
-        ? result.passed
-        : result.results.filter((entry) => entry.status === 'PASS').length;
-    const failedCount = typeof result.failed === 'number'
-        ? result.failed
-        : Math.max(result.results.length - passedCount, 0);
-
-    // Without expected outputs the backend still reports ACCEPTED, but the user ran in code-runner mode.
-    if (!hasExpectedOutputs && failedCount === 0) {
-        return {
-            severity: 'information',
-            message: `AutoJudge: run completed for ${formatCaseCount(result.results.length)}.`,
-        };
-    }
-
-    if (failedCount === 0) {
-        return {
-            severity: 'information',
-            message: `AutoJudge: PASS. ${formatCaseCount(passedCount)} passed.`,
-        };
-    }
-
-    return {
-        severity: 'error',
-        message: `AutoJudge: ${getVerdictLabel(result)}. ${passedCount} passed, ${failedCount} failed.`,
-    };
+    return statusEnum[result] || result || 'UNKNOWN';
 }
 
 /**
@@ -193,39 +136,4 @@ export function buildResultNotification(result, { hasExpectedOutputs }) {
  */
 function formatCaseCount(count) {
     return `${count} ${count === 1 ? 'case' : 'cases'}`;
-}
-
-/**
- * Derive a stable verdict label for notifications even when the backend omits the top-level status.
- * @param {any} result
- * @returns {string}
- */
-function getVerdictLabel(result) {
-    switch (result?.status) {
-    case 'ACCEPTED':
-        return 'PASS';
-    case 'WRONG_ANSWER':
-        return 'WRONG_ANSWER';
-    case 'TIME_LIMIT_EXCEEDED':
-        return 'TIME_LIMIT_EXCEEDED';
-    case 'ERROR':
-    case 'PARSING_ERROR':
-        return 'ERROR';
-    default:
-        break;
-    }
-
-    if (result?.results?.some((entry) => entry.status === 'TLE')) {
-        return 'TIME_LIMIT_EXCEEDED';
-    }
-
-    if (result?.results?.some((entry) => entry.status === 'RTE')) {
-        return 'ERROR';
-    }
-
-    if (result?.results?.some((entry) => entry.status === 'WA')) {
-        return 'WRONG_ANSWER';
-    }
-
-    return 'ERROR';
 }

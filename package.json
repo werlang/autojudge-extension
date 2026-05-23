@@ -1,7 +1,7 @@
 {
   "name": "autojudge-extension",
   "displayName": "AutoJudge",
-  "description": "Run and submit programming solutions to the AutoJudge API directly from Visual Studio Code, or connect to your own self-hosted AutoJudge server instance.",
+  "description": "Run programming solutions against the AutoJudge API directly from Visual Studio Code, or connect to your own self-hosted AutoJudge server instance.",
   "version": "0.1.0",
   "publisher": "autojudge",
   "license": "MIT",
@@ -36,8 +36,13 @@
     "commands": [
       {
         "command": "autojudge.runActiveFile",
-        "title": "AutoJudge: Run Active File",
+        "title": "AutoJudge: Run Active File (Code Runner)",
         "icon": "$(play)"
+      },
+      {
+        "command": "autojudge.testActiveFile",
+        "title": "AutoJudge: Test Active File (Test Mode)",
+        "icon": "$(run-coverage)"
       }
     ],
     "keybindings": [
@@ -46,12 +51,23 @@
         "key": "ctrl+alt+r",
         "mac": "ctrl+alt+r",
         "when": "resourceScheme == file && editorLangId =~ /^(python|javascript|typescript|java|cpp|c|php)$/"
+      },
+      {
+        "command": "autojudge.testActiveFile",
+        "key": "ctrl+alt+t",
+        "mac": "ctrl+alt+t",
+        "when": "resourceScheme == file && editorLangId =~ /^(python|javascript|typescript|java|cpp|c|php)$/"
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "autojudge.runActiveFile",
+          "when": "resourceScheme == file && editorLangId =~ /^(python|javascript|typescript|java|cpp|c|php)$/",
+          "group": "navigation@100"
+        },
+        {
+          "command": "autojudge.testActiveFile",
           "when": "resourceScheme == file && editorLangId =~ /^(python|javascript|typescript|java|cpp|c|php)$/",
           "group": "navigation@100"
         }
@@ -69,7 +85,7 @@
           "type": "string",
           "default": "",
           "scope": "resource",
-          "description": "Optional testcase folder for the active run. Supports VS Code variables such as ${workspaceFolder} and ${fileDirname}. AutoJudge reads direct child .in files as inputs and, when every case has a matching .out file in the same folder, enables judge mode automatically. Leave blank to use the source file directory."
+          "description": "Optional testcase folder. Supports VS Code variables such as ${workspaceFolder} and ${fileDirname}. AutoJudge reads direct child .in files as inputs. Test mode also requires matching .out files in the same folder for every input case. Leave blank to use the source file directory."
         }
       }
     }

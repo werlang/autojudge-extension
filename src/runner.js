@@ -3,15 +3,16 @@ import * as vscode from 'vscode';
 import { normalizeBaseUrl, scheduleRun, pollRun } from './autojudge-client.js';
 import { resolveRunInputs } from './input-resolver.js';
 import { resolveExpectedOutputs } from './output-path-resolver.js';
-import { SUPPORTED_EXTENSIONS } from './config.js';
-import { buildResultNotification, writePreSendOutput, writeResult, writeWaitingForResultOutput } from './output-resolver.js';
+import { SUPPORTED_EXTENSIONS, RUN_MODE } from './config.js';
+import { writePreSendOutput, writeResult, writeWaitingForResultOutput } from './output-resolver.js';
 
 /**
- * Run the active source file through the AutoJudge coderunner endpoint.
+ * Run the active editor file against the AutoJudge API with the selected run mode, rendering output channel details and progress notifications along the way.
  * @param {import('vscode').OutputChannel} outputChannel
+ * @param {typeof RUN_MODE[keyof typeof RUN_MODE]} mode
  * @returns {Promise<void>}
  */
-export async function runActiveFile(outputChannel) {
+export async function runCode(outputChannel, mode) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         void vscode.window.showErrorMessage('Open a source file before running AutoJudge.');
@@ -50,7 +51,7 @@ export async function runActiveFile(outputChannel) {
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: 'AutoJudge: Running active file',
+        title: mode === RUN_MODE.TEST ? 'AutoJudge: Running tests for active file' : 'AutoJudge: Running active file',
         cancellable: true,
     }, async (progress, cancellationToken) => {
         const abortController = new AbortController();
@@ -62,15 +63,17 @@ export async function runActiveFile(outputChannel) {
                 configuredTestcasePath,
             });
 
-            // Judge mode activates automatically only when every discovered `.in` file has a matching `.out` file.
-            const resolvedOutputs = await resolveExpectedOutputs(vscode, document.uri, {
-                configuredTestcasePath,
-                resolvedInputs,
-            });
+            const resolvedOutputs = mode === RUN_MODE.TEST
+                ? await resolveExpectedOutputs(vscode, document.uri, {
+                    configuredTestcasePath,
+                    resolvedInputs,
+                })
+                : null;
 
             writePreSendOutput(outputChannel, {
                 filename,
                 baseUrl,
+                mode,
                 resolvedInputs,
                 resolvedOutputs,
             });
@@ -103,17 +106,7 @@ export async function runActiveFile(outputChannel) {
                 }
             }
 
-            writeResult(outputChannel, { result });
-
-            const notification = buildResultNotification(result, {
-                hasExpectedOutputs: Boolean(resolvedOutputs),
-            });
-            if (notification.severity === 'error') {
-                void vscode.window.showErrorMessage(notification.message);
-            }
-            else {
-                void vscode.window.showInformationMessage(notification.message);
-            }
+            writeResult(outputChannel, { result, mode });
         }
         catch (error) {
             const message = error.name === 'AbortError' ? 'Run cancelled.' : error.message;

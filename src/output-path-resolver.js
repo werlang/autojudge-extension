@@ -5,7 +5,7 @@ const INPUT_FILE_EXTENSION = '.in';
 const OUTPUT_FILE_EXTENSION = '.out';
 
 /**
- * Resolve expected outputs from the testcase folder so the backend can run in judge mode.
+ * Resolve expected outputs from the testcase folder so the backend can run in explicit test mode.
  * @param {typeof import('vscode')} vscode
  * @param {import('vscode').Uri} sourceUri
  * @param {{ configuredTestcasePath?: string, resolvedInputs: { inputUris: import('vscode').Uri[], sourceType: string } }} options
@@ -63,20 +63,24 @@ function resolveTestcaseDirectoryUri(vscode, sourceUri, configuredTestcasePath) 
 async function readExpectedOutputDirectory(vscode, directoryUri, inputUris) {
     const outputs = [];
     const outputUris = [];
+    const missingOutputFiles = [];
 
-    // Judge mode is all-or-nothing for a run; if any `.out` file is missing we fall back to code-runner mode.
+    // Test mode and coderunner mode share the same folder scan, but only test mode turns missing `.out` files into a hard stop.
     for (const inputUri of inputUris) {
-        const outputUri = vscode.Uri.file(path.join(
-            directoryUri.fsPath,
-            replaceCaseFileExtension(path.basename(inputUri.fsPath), INPUT_FILE_EXTENSION, OUTPUT_FILE_EXTENSION),
-        ));
+        const outputFilename = replaceCaseFileExtension(path.basename(inputUri.fsPath), INPUT_FILE_EXTENSION, OUTPUT_FILE_EXTENSION);
+        const outputUri = vscode.Uri.file(path.join(directoryUri.fsPath, outputFilename));
         const entryType = await getEntryType(vscode, outputUri);
         if (entryType !== 'file') {
-            return null;
+            missingOutputFiles.push(outputFilename);
+            continue;
         }
 
         outputs.push(await readUtf8File(vscode, outputUri));
         outputUris.push(outputUri);
+    }
+
+    if (missingOutputFiles.length) {
+        throw new Error(`Missing expected output files: ${missingOutputFiles.join(', ')}`);
     }
 
     return {
