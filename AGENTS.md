@@ -28,6 +28,9 @@
 - Use modern ESM-style JavaScript consistent with the existing `import` and named export pattern.
 - Preserve the current extension shape: thin activation logic in [src/extension.js](src/extension.js), shared run orchestration in [src/runner.js](src/runner.js), HTTP helpers in [src/autojudge-client.js](src/autojudge-client.js), filesystem/input resolution in [src/input-resolver.js](src/input-resolver.js), and expected-output validation in [src/output-path-resolver.js](src/output-path-resolver.js).
 - If you change a contributed command, menu item, keybinding, or setting, update [package.json](package.json), [README.md](README.md), and any user-facing [CHANGELOG.md](CHANGELOG.md) entry that describes the change.
+- Treat all user-facing docs as extension docs, not generic app/library docs. Keep wording, examples, and workflows centered on VS Code extension usage.
+- Keep [README.md](README.md) in VS Code Marketplace style. Prefer this section order unless there is a strong reason to deviate: Features, Install, Quick Start, Commands, Keyboard Shortcuts, Configuration, Troubleshooting, Release Notes.
+- In [README.md](README.md), always keep command ids, command titles, keybindings, and supported languages synchronized with [package.json](package.json).
 - Keep output user-facing and concise in the `AutoJudge` output channel and VS Code notifications.
 - Start the development environment with `docker compose up -d --build` and run repository commands inside the running `extension` service.
 - Do not run `node`, `npm`, `npx`, `vitest`, or other project tooling directly on the host; use `docker compose exec extension ...` instead.
@@ -62,3 +65,4 @@
 - A configured `autojudge.testcasePath` is authoritative; missing configured targets and file-vs-folder mismatches should fail clearly instead of silently falling back.
 - Missing `.out` files are ignored in coderunner mode but are an error in test mode.
 - Do not broaden scope into contest submission flows unless explicitly requested; the repository currently implements only the Run flow.
+- Do not let [README.md](README.md) drift into generic GitHub project boilerplate. It must read like a polished VS Code extension README intended for Marketplace users.
