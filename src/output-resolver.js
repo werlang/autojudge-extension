@@ -76,7 +76,6 @@ export function writeResult(outputChannel, { result, mode = RUN_MODE.CODE_RUNNER
     outputChannel.appendLine('');
 
     for (const [index, entry] of result.results.entries()) {
-        console.log(entry);
         const label = entry.file ? path.basename(entry.file) : `Case ${index + 1}`;
 
         outputChannel.appendLine(`[${label}]${mode === RUN_MODE.CODE_RUNNER ? ':' : ` - ${getVerdictLabel(entry.status)}`}`);

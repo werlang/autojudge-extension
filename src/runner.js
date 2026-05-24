@@ -101,7 +101,15 @@ export async function runCode(outputChannel, mode) {
             if (result?.results?.length) {
                 for (const [index, entry] of result.results.entries()) {
                     if (entry.file) {
-                        entry.file = path.basename(resolvedInputs.inputUris[index]?.fsPath || entry.file);
+                        // server will aanswer file input files test00, test01, etc. regardless of the original file name
+                        const serverOrder = entry.file.match(/test(\d+)/)?.[1];
+                        if (serverOrder != null) {
+                            const inputUri = resolvedInputs.inputUris?.[Number(serverOrder)];
+                            if (inputUri) {
+                                entry.file = path.basename(inputUri.fsPath);
+                                continue;
+                            }
+                        }
                     }
                 }
             }
